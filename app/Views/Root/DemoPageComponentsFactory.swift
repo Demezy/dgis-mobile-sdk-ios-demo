@@ -29,7 +29,8 @@ struct DemoPageComponentsFactory {
 		tapRecognizerCallback: MapView.TapRecognizerCallback? = nil,
 		markerViewOverlay: IMarkerViewOverlay? = nil
 	) -> MapView {
-		MapView(
+		let mapFactoryProvider = MapFactoryProvider(container: self.sdk, mapGesturesType: mapGesturesType)
+		var mapView = MapView(
 			mapGesturesType: mapGesturesType,
 			appearance: appearance,
 			copyrightInsets: copyrightInsets,
@@ -42,6 +43,8 @@ struct DemoPageComponentsFactory {
 			},
 			markerViewOverlay: markerViewOverlay
 		)
+		mapView.mapFactoryProvider = mapFactoryProvider
+		return mapView
 	}
 
 	func makeMapViewWithZoomControl(
@@ -52,13 +55,16 @@ struct DemoPageComponentsFactory {
 		showsAPIVersion: Bool = true,
 		tapRecognizerCallback: MapView.TapRecognizerCallback? = nil
 	) -> some View {
-		ZStack {
+        debugPrint("FLAG1: makeMapViewWithZoomControl", mapGesturesType)
+        
+        return ZStack {
 			self.makeMapView(
 				appearance: appearance,
 				alignment: alignment,
-				copyrightInsets: copyrightInsets,
-				showsAPIVersion: showsAPIVersion,
-				tapRecognizerCallback: tapRecognizerCallback
+                mapGesturesType:mapGesturesType,
+                copyrightInsets: copyrightInsets,
+                showsAPIVersion: showsAPIVersion,
+                tapRecognizerCallback: tapRecognizerCallback
 			)
 			HStack {
 				Spacer()

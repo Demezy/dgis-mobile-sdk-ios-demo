@@ -7,7 +7,7 @@ struct MapView: UIViewRepresentable {
 	typealias URLOpener = (URL) -> Void
 	typealias TapRecognizerCallback = (RenderedObjectInfo) -> Void
 
-	private var mapFactoryProvider: IMapFactoryProvider?
+	var mapFactoryProvider: IMapFactoryProvider?
 	private let urlOpener: URLOpener?
 	private var mapGesturesType: MapGesturesType
 
@@ -42,6 +42,7 @@ struct MapView: UIViewRepresentable {
 		self.tapRecognizerCallback = tapRecognizerCallback
 		self.mapUIViewFactory = mapUIViewFactory
 		self.markerViewOverlay = markerViewOverlay
+		self.mapFactoryProvider = nil
 	}
 
 	func makeCoordinator() -> MapViewCoordinator {

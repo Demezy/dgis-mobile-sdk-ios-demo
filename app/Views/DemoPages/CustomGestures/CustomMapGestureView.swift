@@ -1,6 +1,33 @@
 import UIKit
 import DGis
 
+class LoggingMapEventProcessorProxy : IMapEventProcessor {
+    private let processor: IMapEventProcessor
+    
+    init(processor: IMapEventProcessor){
+        self.processor = processor
+    }
+    
+    @available(iOS 16.0, *)
+    private func logProcess(event: DGis.Event){
+        let eventType = String(describing: type(of: event))
+        let timestamp = Date().timeIntervalSince1970
+        debugPrint("FLAG1: LoggingMapEventProcessorProxy: \(eventType), timestamp: \(timestamp)")
+        self.processor.process(event: event)
+    }
+    
+    
+    func process(event: DGis.Event) {
+        if #available(iOS 16.0, *) {
+            logProcess(event:  event)
+        } else {
+            self.processor.process(event: event)
+        }
+    }
+    
+    
+}
+
 class CustomMapGestureView: UIView, IMapGestureView {
 	private(set) var panGestureRecognizer: UIPanGestureRecognizer?
 	private(set) var pinchGestureRecognizer: UIPinchGestureRecognizer?
@@ -13,20 +40,22 @@ class CustomMapGestureView: UIView, IMapGestureView {
 	private let mapCoordinateSpace: IMapCoordinateSpace
 	private let defaultMapGestureView: IMapGestureView?
 
-	init(
-		map: Map,
-		mapEventProcessor: IMapEventProcessor,
-		mapCoordinateSpace: IMapCoordinateSpace
-	) {
-		self.mapEventProcessor = mapEventProcessor
-		self.mapCoordinateSpace = mapCoordinateSpace
-		let gestureViewFactory = MapOptions.default.gestureViewFactory
-		self.defaultMapGestureView = gestureViewFactory?.makeGestureView(
-			map: map,
-			eventProcessor: mapEventProcessor,
-			coordinateSpace: mapCoordinateSpace
-		)
-		super.init(frame: .zero)
+    init(
+        map: Map,
+        mapEventProcessor: IMapEventProcessor,
+        mapCoordinateSpace: IMapCoordinateSpace
+    ) {
+        debugPrint("FLAG1: Initializing CustomMapGestureView")
+        self.mapEventProcessor = LoggingMapEventProcessorProxy(processor: mapEventProcessor)
+        self.mapCoordinateSpace = mapCoordinateSpace
+        let gestureViewFactory = MapOptions.default.gestureViewFactory
+        debugPrint("FLAG1: Creating default gesture view")
+        self.defaultMapGestureView = gestureViewFactory?.makeGestureView(
+            map: map,
+            eventProcessor: mapEventProcessor,
+            coordinateSpace: mapCoordinateSpace
+        )
+        super.init(frame: .zero)
 
 		self.setupGestureRecognizers()
 	}
@@ -97,32 +126,37 @@ class CustomMapGestureView: UIView, IMapGestureView {
 					y: targetLocation.y - translation.y
 				)
 
-				if from != targetLocation {
-					let toPixels = self.mapCoordinateSpace.toPixels
-					let from = from.applying(toPixels)
-					let location = targetLocation.applying(toPixels)
-					let vector = CGVector(
-						dx: location.x - from.x,
-						dy: location.y - from.y
-					)
-					let fromPoint = ScreenPoint(from)
-					let shift = ScreenShift(vector)
-					let event = DirectMapShiftEvent(
-						screenShift: shift,
-						shiftedPoint: fromPoint,
-						timestamp: .now()
-					)
-					self.mapEventProcessor.process(event: event)
-				}
-				panGestureRecognizer.setTranslation(.zero, in: self)
-			case .ended:
-				self.mapEventProcessor.process(event: DirectMapControlEndEvent(timestamp: .now()))
-			case .cancelled, .failed:
-				self.mapEventProcessor.process(event: CancelEvent())
-			default:
-				break
-		}
-	}
+                if from != targetLocation {
+                    debugPrint("FLAG1: Processing pan movement")
+                    let toPixels = self.mapCoordinateSpace.toPixels
+                    let from = from.applying(toPixels)
+                    let location = targetLocation.applying(toPixels)
+                    let vector = CGVector(
+                        dx: location.x - from.x,
+                        dy: location.y - from.y
+                    )
+                    debugPrint("FLAG1: Pan vector - dx: \(vector.dx), dy: \(vector.dy)")
+                    let fromPoint = ScreenPoint(from)
+                    let shift = ScreenShift(vector)
+                    let event = DirectMapShiftEvent(
+                        screenShift: shift,
+                        shiftedPoint: fromPoint,
+                        timestamp: .now()
+                    )
+                    self.mapEventProcessor.process(event: event)
+                }
+                panGestureRecognizer.setTranslation(.zero, in: self)
+            case .ended:
+                debugPrint("FLAG1: Pan ended")
+                self.mapEventProcessor.process(event: DirectMapControlEndEvent(timestamp: .now()))
+            case .cancelled, .failed:
+                debugPrint("FLAG1: Pan cancelled/failed")
+                self.mapEventProcessor.process(event: CancelEvent())
+            default:
+                debugPrint("FLAG1: Pan other state: \(panGestureRecognizer.state.rawValue)")
+                break
+        }
+    }
 }
 
 extension CustomMapGestureView: UIGestureRecognizerDelegate {
